@@ -215,7 +215,12 @@ void* send_messages(void* arg) //(это значит ф-я использует
     dest.sin_family = AF_INET; //также IPv4
     dest.sin_port = htons(PORT); //ставим порт
     
+<<<<<<< HEAD
 
+=======
+    printf("ваш ник: %s%s%s\n", get_color_for_nick(mynick), mynick, RESET);
+    printf("мультикаст группа: %s:%d\n", MULTICAST_GROUP, PORT);
+>>>>>>> b345137e7953d3399852ef2b76d11344b0134461
 
     while (1) 
     {
@@ -284,7 +289,10 @@ int main()
     printf("ваш ник: %s%s%s\n", get_color_for_nick(mynick), mynick, RESET);
     printf("порт: %d\n", PORT);
     printf("мультикаст группа: %s:%d\n", MULTICAST_GROUP, PORT);
+<<<<<<< HEAD
     printf("list - покажет пользователей в сети\n");
+=======
+>>>>>>> b345137e7953d3399852ef2b76d11344b0134461
     
     pthread_t send_thread;
     pthread_create(&send_thread, NULL, send_messages, &sock);
