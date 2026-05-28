@@ -28,7 +28,7 @@
 #define MAXusers 10 //макс число запоминаемых пользователей
 #define PORT 8882
 #define MULTICAST_GROUP "239.0.0.1"
-#define DISCOVERY_INTERVAL 10
+#define OBNARUZ_INT 10
 
 typedef enum _MessageType {
     MessageType_Hello,
@@ -41,10 +41,6 @@ typedef struct _MessageContent { //структура сообщ
     char nickname[MAXnick]; //ник
     char text[MAXtext]; //текст
 } MessageContent;
-
-
-
-
 
 
 typedef struct _HelloContent {
@@ -65,9 +61,6 @@ struct Message { //типо полиморфизм и наследование �
         PrivateMessageContent privmsg;
     };
 };
-
-
-
 
 struct User { //хранение другого товарища
     char ip[16]; //айпи
@@ -121,14 +114,11 @@ void gennick(char *buf, int size) { //генерация ников
 
     char base[100]; //склеиваем прид и сущ
     snprintf(base, sizeof(base), "%s%s", adjs[rand() % ac], nouns[rand() % nc]);
-
-
-
     char mod[100]; //замена разная
     int j = 0;
     for (int i = 0; base[i] && j < 99; i++) {
         char c = base[i];
-        if (rand() % 100 < 47) c = leet(c); //47% зам на цифру
+        if (rand() % 100 < 47) c = leet(c); //47% зам на цифру ну это по приколу
         if (isalpha(c)) c = (rand() % 2) ? toupper(c) : tolower(c); //случайный регистр
         mod[j++] = c;
     }
@@ -141,14 +131,14 @@ void gennick(char *buf, int size) { //генерация ников
 
 
 
-char* findnick(char *ip) { //ищем ник по айпи, не знаем - сам айпи
+char* findnick(char *ip) { //ищем ник по айпи, не знаем тогда сам айпи
     for (int i = 0; i < usercount; i++) {if (strcmp(users[i].ip, ip) == 0) return users[i].nick; }
     return ip;
 }
 
 
 
-char* get_color_for_nick(char *nick) {
+char* colornick(char *nick) {
     int sum = 0;
     for (int i = 0; nick[i]; i++) {sum += nick[i];}
 
@@ -166,8 +156,11 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
     pthread_mutex_lock(&users_mutex); //мьютекс защищает глобальный массив чтоыб из разных потоков не видели
     for (int i = 0; i < usercount; i++) { //проверяем есть ли и обновляем
         if (strcmp(users[i].ip, ip) == 0) {
+
             strncpy(users[i].nick, nick, MAXnick - 1);
             users[i].last_seen = time(NULL);
+
+
             users[i].online = 1;
             pthread_mutex_unlock(&users_mutex);
             return;
@@ -179,13 +172,15 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
 
     if (usercount < MAXusers) { //если нет то добавляем
         strncpy(users[usercount].ip, ip, 15);
+
         strncpy(users[usercount].nick, nick, MAXnick - 1);
         users[usercount].last_seen = time(NULL);
         users[usercount].online = 1;
+
         usercount++;
         printf("\n%s[%s]%s %s%s%s %s\n", 
             BOLD, "НОВЫЙ", RESET,
-            get_color_for_nick(nick), nick, RESET, 
+            colornick(nick), nick, RESET, 
             ip);
     }
     pthread_mutex_unlock(&users_mutex);
@@ -217,7 +212,6 @@ void setup_multicast() {
     memset(&mreq, 0, sizeof(mreq));
     inet_pton(AF_INET, MULTICAST_GROUP, &mreq.imr_multiaddr);
     mreq.imr_interface.s_addr = INADDR_ANY;
-    
     setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
 
     int ttl = 2;
@@ -244,13 +238,8 @@ void* send_messages(void* arg) //(это значит ф-я использует
 
     while (1) 
     {
-        printf("%s[%s%s%s%s]%s ", 
-            BOLD,
-            get_color_for_nick(mynick),
-            mynick, 
-            RESET,
-            BOLD,
-            RESET);
+        printf("%s[%s%s%s%s]%s ",BOLD, colornick(mynick),mynick, RESET, BOLD, RESET);
+
         fflush(stdout);
         if (!fgets(input, sizeof(input), stdin)) continue;
         
@@ -258,14 +247,12 @@ void* send_messages(void* arg) //(это значит ф-я использует
         
         if (strcmp(input, "list") == 0) {
             pthread_mutex_lock(&users_mutex);
-            printf("\nпользователи в сети:\n");
+
+            printf("\nпользователи в сети: \n");
+
             for (int i = 0; i < usercount; i++) {
-                if (users[i].online) {
-                    printf("  %s%s%s \n", get_color_for_nick(users[i].nick),
-                    users[i].nick, 
-                           RESET);
-                }
-            }
+                if (users[i].online) {printf("  %s%s%s \n", colornick(users[i].nick),users[i].nick,RESET);
+                }}
             pthread_mutex_unlock(&users_mutex);
             continue;
         }
@@ -286,7 +273,7 @@ void* send_messages(void* arg) //(это значит ф-я использует
         strcpy(msg.privmsg.text, text);
         
         inet_pton(AF_INET, ip, &dest.sin_addr);
-        sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&dest, sizeof(dest));
+        sendto(sock, &msg, sizeof(msg), 0,(struct sockaddr*)&dest, sizeof(dest));
     }
 
 
@@ -304,11 +291,11 @@ int main()
     
     sock = socket(AF_INET, SOCK_DGRAM, 0); //IPv4, UDP, по умолчанию
     setup_multicast();
-
-    // struct timeval tv; //мб сработает я не знаю уже
-    // tv.tv_sec = 1;
-    // tv.tv_usec = 0;
-    // setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+//тут лажа?
+    struct timeval tv; //мб сработает я не знаю уже
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     
     system("clear");
     system("figlet -f slant 'Chatik'");
@@ -316,7 +303,7 @@ int main()
 
 
 
-    printf("ваш ник: %s%s%s\n", get_color_for_nick(mynick), mynick, RESET);
+    printf("ваш ник: %s%s%s\n", colornick(mynick), mynick, RESET);
     printf("порт: %d\n", PORT);
     printf("мультикаст группа: %s:%d\n", MULTICAST_GROUP, PORT);
     printf("list - покажет пользователей в сети\n");
@@ -334,7 +321,8 @@ int main()
 
     while (1) 
     {
-        if (time(NULL) - last_hello >= DISCOVERY_INTERVAL) {
+        if (time(NULL) - last_hello >= OBNARUZ_INT) {
+            
             struct Message hello_msg;
             hello_msg.type = MessageType_Hello;
             strcpy(hello_msg.hello.nickname, mynick);
@@ -347,7 +335,7 @@ int main()
                 if (users[i].online && (now - users[i].last_seen) > 35) {
                     users[i].online = 0;
                     // printf("\n%s%s%s (%s) вышел\n", 
-                    //        get_color_for_nick(users[i].nick),
+                    //        colornick(users[i].nick),
                     //        users[i].nick, 
                     //        RESET, 
                     //        users[i].ip);
@@ -371,7 +359,7 @@ int main()
             saveuser(ip_str, msg.hello.nickname);
             // printf("\n%s[+]%s %s%s%s (%s) в сети\n", 
             //        BOLD, RESET,
-            //        get_color_for_nick(msg.hello.nickname),
+            //        colornick(msg.hello.nickname),
             //        msg.hello.nickname, 
             //        RESET, 
             //        ip_str);
@@ -383,7 +371,7 @@ int main()
         else if (msg.type == MessageType_Message) {
             saveuser(ip_str, msg.message.nickname);
             printf("\n%s%s%s%s: %s%s\n", 
-                   get_color_for_nick(msg.message.nickname),
+                   colornick(msg.message.nickname),
                    msg.message.nickname, 
                    RESET,
                    BOLD,
@@ -395,7 +383,7 @@ int main()
                 saveuser(ip_str, msg.privmsg.from);
                 printf("\n%s[личное] %s%s%s%s: %s%s\n", 
                        BOLD,
-                       get_color_for_nick(msg.privmsg.from),
+                       colornick(msg.privmsg.from),
                        msg.privmsg.from, 
                        RESET,
                        BOLD,
@@ -406,7 +394,7 @@ int main()
         // printf("[бяка] ");
         // printf("%s[%s%s%s%s]%s ", 
         //        BOLD,
-        //        get_color_for_nick(mynick),
+        //        colornick(mynick),
         //        mynick, 
         //        RESET,
         //        BOLD,
