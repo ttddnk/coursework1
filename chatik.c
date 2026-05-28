@@ -94,8 +94,6 @@ const char *nouns[] = {
 
 
 
-
-
 char leet(char c) {
     switch (c) {
         case 'A': case 'a': return '4'; //A в 4
@@ -106,6 +104,7 @@ char leet(char c) {
         default:  return c; //остальные оставили
     }
 }
+
 
 void gennick(char *buf, int size) { //генерация ников
     int ac = 0, nc = 0;
@@ -182,6 +181,7 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
 
 void multicast_send(struct Message *msg) {
     struct sockaddr_in group_addr;
+    memset(&group_addr, 0, sizeof(group_addr));
     group_addr.sin_family = AF_INET;
     group_addr.sin_port = htons(PORT);
     inet_pton(AF_INET, MULTICAST_GROUP, &group_addr.sin_addr);
@@ -270,7 +270,22 @@ void* send_messages(void* arg) //(это значит ф-я использует
         strcpy(msg.privmsg.to, ip);
         strcpy(msg.privmsg.text, text);
         
-        inet_pton(AF_INET, ip, &dest.sin_addr);
+        pthread_mutex_lock(&users_mutex);
+        char target_ip[16] = {0};
+        for (int i = 0; i < usercount; i++) {
+            if (strcmp(users[i].nick, ip) == 0) {
+                strcpy(target_ip, users[i].ip);
+                break;
+            }
+        }
+        pthread_mutex_unlock(&users_mutex);
+        
+        if (target_ip[0] == 0) {
+            printf("пользователь %s не найден\n", ip);
+            continue;
+        }
+        
+        inet_pton(AF_INET, target_ip, &dest.sin_addr);
         sendto(sock, &msg, sizeof(msg), 0,(struct sockaddr*)&dest, sizeof(dest));
     }
 
@@ -322,8 +337,9 @@ int main()
         if (time(NULL) - last_hello >= OBNARUZ_INT) {
 
         struct Message hello_msg;
+        memset(&hello_msg, 0, sizeof(hello_msg));
         hello_msg.type = MessageType_Hello;
-        
+
         strcpy(hello_msg.hello.nickname, mynick);
             
             multicast_send(&hello_msg);
@@ -345,15 +361,15 @@ int main()
         }
         
         memset(&msg, 0, sizeof(msg));
-        recvfrom(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&from, &len);
+        int n = recvfrom(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&from, &len);
         
-
+        if (n > 0) {
         char ip_str[16];
         strcpy(ip_str, inet_ntoa(from.sin_addr));
         
         if (msg.type == MessageType_Hello) 
         { 
-            struct Message response; response.type = MessageType_HelloResponse;
+            struct Message response; memset(&response, 0, sizeof(response)); response.type = MessageType_HelloResponse;
             strcpy(response.hello.nickname, mynick); 
             sendto(sock, &response, sizeof(response), 0, (struct sockaddr*)&from, sizeof(from));
             saveuser(ip_str, msg.hello.nickname);
@@ -369,10 +385,9 @@ int main()
         {
 
         saveuser(ip_str, msg.message.nickname);
-        printf("\n%s%s%s%s: %s%s\n", 
-            colornick(msg.message.nickname),
-            msg.message.nickname, 
-            RESET,BOLD,msg.message.text, RESET);
+
+        printf("\n%s%s%s%s: %s%s\n", colornick(msg.message.nickname), msg.message.nickname, 
+        RESET,BOLD,msg.message.text, RESET);
         }
 
         else if (msg.type == MessageType_PrivateMessage) {
@@ -380,13 +395,14 @@ int main()
             {
                 saveuser(ip_str, msg.privmsg.from);
 
-                printf("\n%s[личное] %s%s%s%s: %s%s\n", BOLD,
-                    colornick(msg.privmsg.from), 
-                    msg.privmsg.from, RESET,BOLD, msg.privmsg.text, RESET);
+            printf("\n%s[личное] %s%s%s%s: %s%s\n", BOLD,
+                colornick(msg.privmsg.from), 
+                msg.privmsg.from, RESET,BOLD, msg.privmsg.text, RESET);
             }
         }
         // printf("[бяка] ");
         // printf("%s[%s%s%s%s]%s ", BOLD,colornick(mynick), mynick, RESET,BOLD,RESET);
         fflush(stdout);
+        }
     }
 }
