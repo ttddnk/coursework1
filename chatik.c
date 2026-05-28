@@ -28,7 +28,7 @@
 #define MAXusers 10 //макс число запоминаемых пользователей
 #define PORT 8882
 #define MULTICAST_GROUP "239.0.0.1"
-#define OBNARUZ_INT 10
+#define OBNARUZ_INT 5
 
 typedef enum _MessageType {
     MessageType_Hello,
@@ -156,7 +156,9 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
     pthread_mutex_lock(&users_mutex); //мьютекс защищает глобальный массив чтоыб из разных потоков не видели
 
     for (int i = 0; i < usercount; i++) { //проверяем есть ли и обновляем
-        if (strcmp(users[i].ip, ip) == 0) {strncpy(users[i].nick, nick, MAXnick - 1);
+        if (strcmp(users[i].nick, nick) == 0) {
+            strcpy(users[i].ip, ip);
+            strncpy(users[i].nick, nick, MAXnick - 1);
             users[i].last_seen = time(NULL); 
             users[i].online = 1; 
             pthread_mutex_unlock(&users_mutex);
@@ -181,7 +183,6 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
 
 void multicast_send(struct Message *msg) {
     struct sockaddr_in group_addr;
-    memset(&group_addr, 0, sizeof(group_addr));
     group_addr.sin_family = AF_INET;
     group_addr.sin_port = htons(PORT);
     inet_pton(AF_INET, MULTICAST_GROUP, &group_addr.sin_addr);
@@ -264,12 +265,6 @@ void* send_messages(void* arg) //(это значит ф-я использует
         strcpy(ip, input);
         strcpy(text, space + 1);
         
-        struct Message msg;
-        msg.type = MessageType_PrivateMessage;
-        strcpy(msg.privmsg.from, mynick);
-        strcpy(msg.privmsg.to, ip);
-        strcpy(msg.privmsg.text, text);
-        
         pthread_mutex_lock(&users_mutex);
         char target_ip[16] = {0};
         for (int i = 0; i < usercount; i++) {
@@ -285,8 +280,15 @@ void* send_messages(void* arg) //(это значит ф-я использует
             continue;
         }
         
+        struct Message msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.type = MessageType_PrivateMessage;
+        strcpy(msg.privmsg.from, mynick);
+        strcpy(msg.privmsg.to, ip);
+        strcpy(msg.privmsg.text, text);
+        
         inet_pton(AF_INET, target_ip, &dest.sin_addr);
-        sendto(sock, &msg, sizeof(msg), 0,(struct sockaddr*)&dest, sizeof(dest));
+        sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&dest, sizeof(dest));
     }
 
 
@@ -306,8 +308,8 @@ int main()
     setup_multicast();
 //тут лажа?
     struct timeval tv; //мб сработает я не знаю уже
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
+    tv.tv_sec = 0;
+    tv.tv_usec = 500000;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     
     system("clear");
@@ -329,6 +331,11 @@ int main()
     socklen_t len = sizeof(from);
     time_t last_hello = 0;
     
+    struct Message hello_msg;
+    memset(&hello_msg, 0, sizeof(hello_msg));
+    hello_msg.type = MessageType_Hello;
+    strcpy(hello_msg.hello.nickname, mynick);
+    multicast_send(&hello_msg);
 
 
 
@@ -349,7 +356,7 @@ int main()
         time_t now = time(NULL);
 
             for (int i = 0; i < usercount; i++) {
-                if (users[i].online && (now - users[i].last_seen) > 35) 
+                if (users[i].online && (now - users[i].last_seen) > 30) 
 
                 {users[i].online = 0;
                     // printf("\n%s%s%s (%s) вышел\n",colornick(users[i].nick),users[i].nick, RESET, users[i].ip);
@@ -385,9 +392,10 @@ int main()
         {
 
         saveuser(ip_str, msg.message.nickname);
-
-        printf("\n%s%s%s%s: %s%s\n", colornick(msg.message.nickname), msg.message.nickname, 
-        RESET,BOLD,msg.message.text, RESET);
+        printf("\n%s%s%s%s: %s%s\n", 
+            colornick(msg.message.nickname),
+            msg.message.nickname, 
+            RESET,BOLD,msg.message.text, RESET);
         }
 
         else if (msg.type == MessageType_PrivateMessage) {
@@ -395,9 +403,9 @@ int main()
             {
                 saveuser(ip_str, msg.privmsg.from);
 
-            printf("\n%s[личное] %s%s%s%s: %s%s\n", BOLD,
-                colornick(msg.privmsg.from), 
-                msg.privmsg.from, RESET,BOLD, msg.privmsg.text, RESET);
+                printf("\n%s[личное] %s%s%s%s: %s%s\n", BOLD,
+                    colornick(msg.privmsg.from), 
+                    msg.privmsg.from, RESET,BOLD, msg.privmsg.text, RESET);
             }
         }
         // printf("[бяка] ");
