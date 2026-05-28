@@ -163,10 +163,10 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
         users[usercount].last_seen = time(NULL);
         users[usercount].online = 1;
         usercount++;
-        printf("\n%s[%s]%s %s%s%s (%s)%s\n", 
-               BOLD, "НОВЫЙ", RESET,
-               get_color_for_nick(nick), nick, RESET, 
-               ip, RESET);
+        // printf("\n%s[%s]%s %s%s%s (%s)%s\n", 
+        //        BOLD, "НОВЫЙ", RESET,
+        //        get_color_for_nick(nick), nick, RESET, 
+        //        ip, RESET);
     }
     pthread_mutex_unlock(&users_mutex);
 }
@@ -200,7 +200,7 @@ void setup_multicast() {
     int ttl = 2;
     setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
 
-    int loop = 0;
+    int loop = 1;
     setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
 }
 
@@ -215,12 +215,7 @@ void* send_messages(void* arg) //(это значит ф-я использует
     dest.sin_family = AF_INET; //также IPv4
     dest.sin_port = htons(PORT); //ставим порт
     
-<<<<<<< HEAD
 
-=======
-    printf("ваш ник: %s%s%s\n", get_color_for_nick(mynick), mynick, RESET);
-    printf("мультикаст группа: %s:%d\n", MULTICAST_GROUP, PORT);
->>>>>>> b345137e7953d3399852ef2b76d11344b0134461
 
     while (1) 
     {
@@ -241,11 +236,9 @@ void* send_messages(void* arg) //(это значит ф-я использует
             printf("\nпользователи в сети:\n");
             for (int i = 0; i < usercount; i++) {
                 if (users[i].online) {
-                    printf("  %s%s%s (%s)\n", 
-                           get_color_for_nick(users[i].nick),
-                           users[i].nick, 
-                           RESET, 
-                           users[i].ip);
+                    printf("  %s%s%s \n", get_color_for_nick(users[i].nick),
+                    users[i].nick, 
+                           RESET);
                 }
             }
             pthread_mutex_unlock(&users_mutex);
@@ -289,10 +282,7 @@ int main()
     printf("ваш ник: %s%s%s\n", get_color_for_nick(mynick), mynick, RESET);
     printf("порт: %d\n", PORT);
     printf("мультикаст группа: %s:%d\n", MULTICAST_GROUP, PORT);
-<<<<<<< HEAD
     printf("list - покажет пользователей в сети\n");
-=======
->>>>>>> b345137e7953d3399852ef2b76d11344b0134461
     
     pthread_t send_thread;
     pthread_create(&send_thread, NULL, send_messages, &sock);
@@ -338,25 +328,25 @@ int main()
             strcpy(response.hello.nickname, mynick);
             sendto(sock, &response, sizeof(response), 0, (struct sockaddr*)&from, sizeof(from));
             saveuser(ip_str, msg.hello.nickname);
-            printf("\n%s[+]%s %s%s%s (%s) в сети\n", 
-                   BOLD, RESET,
-                   get_color_for_nick(msg.hello.nickname),
-                   msg.hello.nickname, 
-                   RESET, 
-                   ip_str);
+            // printf("\n%s[+]%s %s%s%s (%s) в сети\n", 
+            //        BOLD, RESET,
+            //        get_color_for_nick(msg.hello.nickname),
+            //        msg.hello.nickname, 
+            //        RESET, 
+            //        ip_str);
         }
         else if (msg.type == MessageType_HelloResponse) {
             saveuser(ip_str, msg.hello.nickname);
         }
         else if (msg.type == MessageType_Message) {
             saveuser(ip_str, msg.message.nickname);
-            printf("\n%s%s%s%s: %s%s\n", 
-                   get_color_for_nick(msg.message.nickname),
-                   msg.message.nickname, 
-                   RESET,
-                   BOLD,
-                   msg.message.text,
-                   RESET);
+            // printf("\n%s%s%s%s: %s%s\n", 
+            //        get_color_for_nick(msg.message.nickname),
+            //        msg.message.nickname, 
+            //        RESET,
+            //        BOLD,
+            //        msg.message.text,
+            //        RESET);
         }
         else if (msg.type == MessageType_PrivateMessage) {
             if (strcmp(msg.privmsg.to, mynick) == 0) {
@@ -371,16 +361,15 @@ int main()
                        RESET);
             }
         }
-        
-        printf("%s[%s%s%s%s]%s ", 
-               BOLD,
-               get_color_for_nick(mynick),
-               mynick, 
-               RESET,
-               BOLD,
-               RESET);
-        fflush(stdout);
+        // printf("[бяка] ");
+        // printf("%s[%s%s%s%s]%s ", 
+        //        BOLD,
+        //        get_color_for_nick(mynick),
+        //        mynick, 
+        //        RESET,
+        //        BOLD,
+        //        RESET);
+        // fflush(stdout);
     }
     
-    return 0;
 }
