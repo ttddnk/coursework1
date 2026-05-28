@@ -306,11 +306,11 @@ int main()
             for (int i = 0; i < usercount; i++) {
                 if (users[i].online && (now - users[i].last_seen) > 35) {
                     users[i].online = 0;
-                    printf("\n%s%s%s (%s) вышел\n", 
-                           get_color_for_nick(users[i].nick),
-                           users[i].nick, 
-                           RESET, 
-                           users[i].ip);
+                    // printf("\n%s%s%s (%s) вышел\n", 
+                    //        get_color_for_nick(users[i].nick),
+                    //        users[i].nick, 
+                    //        RESET, 
+                    //        users[i].ip);
                 }
             }
             pthread_mutex_unlock(&users_mutex);
@@ -340,13 +340,13 @@ int main()
         }
         else if (msg.type == MessageType_Message) {
             saveuser(ip_str, msg.message.nickname);
-            // printf("\n%s%s%s%s: %s%s\n", 
-            //        get_color_for_nick(msg.message.nickname),
-            //        msg.message.nickname, 
-            //        RESET,
-            //        BOLD,
-            //        msg.message.text,
-            //        RESET);
+            printf("\n%s%s%s%s: %s%s\n", 
+                   get_color_for_nick(msg.message.nickname),
+                   msg.message.nickname, 
+                   RESET,
+                   BOLD,
+                   msg.message.text,
+                   RESET);
         }
         else if (msg.type == MessageType_PrivateMessage) {
             if (strcmp(msg.privmsg.to, mynick) == 0) {
