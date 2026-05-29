@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-
+//все не эелементарное не просто
 #include <stdio.h> 
 #include <string.h> //strlen, strcpy
 #include <sys/socket.h> //socket, sendto, recvfrom(сокеты)
@@ -10,8 +10,8 @@
 #include <stdlib.h> //rand() рандомные числа
 #include <time.h> //time(NULL) для разны чисел от времени
 #include <ctype.h> //toupper() tolower() isalpha() lkz ,erdh
-#include <net/if.h>
-#include <errno.h>
+#include <net/if.h> //чтоб мультикаст знал на какой интерфейс отправлять
+#include <errno.h> //удобно видеть где в фуекции ошибка
 
 // ANSI цвета для терминала
 #define RESET   "\033[0m"
@@ -30,21 +30,21 @@
 #define MULTICAST_GROUP "239.0.0.1"
 #define OBNARUZ_INT 5
 
-typedef enum _MessageType {
-    MessageType_Hello,
-    MessageType_HelloResponse,
-    MessageType_Message,
-    MessageType_PrivateMessage,
-} MessageType;
+typedef enum _MessageType { 
+    MessageType_Hello, //первый элемент энам 0 автоматически так(константа)
+    MessageType_HelloResponse, //1
+    MessageType_Message, //2
+    MessageType_PrivateMessage, //3
+} MessageType; //и это будет новый тип
 
-typedef struct _MessageContent { //структура сообщ
-    char nickname[MAXnick]; //ник
+typedef struct _MessageContent { //структура сообщ (как контейнер для данных)
+    char nickname[MAXnick]; //ник тут просто массивы
     char text[MAXtext]; //текст
 } MessageContent;
 
 
 typedef struct _HelloContent {
-    char nickname[MAXnick];
+    char nickname[MAXnick]; 
 } HelloContent;
 
 typedef struct _PrivateMessageContent {
@@ -54,10 +54,11 @@ typedef struct _PrivateMessageContent {
 } PrivateMessageContent;
 
 struct Message { //типо полиморфизм и наследование как ооп
-    MessageType type;
-    union {
+    MessageType type; //вот тут храниит тип
+    union //объединяем так что разные поля используют одну память
+    {
         MessageContent message;
-        HelloContent hello;
+        HelloContent hello;              //олин из трех  в зависимости от тайп
         PrivateMessageContent privmsg;
     };
 };
@@ -71,11 +72,11 @@ struct User { //хранение другого товарища
 
 
 
-char mynick[MAXnick]; //наш ник
-struct User users[MAXusers]; //все кого знаем
+char mynick[MAXnick]; //наш ник ГЛОБАЛЬНО чтобы все функциии видели
+struct User users[MAXusers]; //все кого знаем (10) наших пользователец просто массив
 int usercount = 0; //сколько знаем
-int sock;
-pthread_mutex_t users_mutex = PTHREAD_MUTEX_INITIALIZER; //инкапсуляция типо скрываем данные 
+int sock;  //номер сокета
+pthread_mutex_t users_mutex = PTHREAD_MUTEX_INITIALIZER; //инкапсуляция типо скрываем данные, мьютекс для защиты массивва
 
 const char *adjs[] = { //для создания ника части 
     "Shadow","Silent","Cyber","Neon","Dark","Void","Rust","Zero",
@@ -94,36 +95,36 @@ const char *nouns[] = {
 
 
 
-char leet(char c) {
-    switch (c) {
-        case 'A': case 'a': return '4'; //A в 4
+char leet(char c) { //приняли символ вернули символ
+    switch (c) { //это чтобы без if else...if else... провека с 
+        case 'A': case 'a': return '4'; //A в 4 ну к прмеру А похожа на 4:)
         case 'E': case 'e': return '3'; //E в 3
         case 'O': case 'o': return '0'; //O в 0
         case 'T': case 't': return '7'; //T в 7
         case 'S': case 's': return '5'; //S в 5
-        default:  return c; //остальные оставили
+        default:  return c; //остальные оставили если ничего не подошло
     }
 }
 
 
-void gennick(char *buf, int size) { //генерация ников
+void gennick(char *buf, int size) { //генерация ников воид чтобы ничего не венула а указатель на буфер куда записать
     int ac = 0, nc = 0;
-    while (adjs[ac]) ac++; //считаем прил
+    while (adjs[ac]) ac++; //считаем прил (идем до конца)
     while (nouns[nc]) nc++; //считаем сущ
 
     char base[100]; //склеиваем прид и сущ
-    snprintf(base, sizeof(base), "%s%s", adjs[rand() % ac], nouns[rand() % nc]);
+    snprintf(base, sizeof(base), "%s%s", adjs[rand() % ac], nouns[rand() % nc]); //выбираем случайное
     char mod[100]; //замена разная
-    int j = 0;
-    for (int i = 0; base[i] && j < 99; i++) {
-        char c = base[i];
+    int j = 0; 
+    for (int i = 0; base[i] && j < 99; i++) { //просто цикл по каждому символу
+        char c = base[i];//взяли текущ
 
         if (rand() % 100 < 47) c = leet(c); //47% зам на цифру ну это по приколу
-        if (isalpha(c)) c = (rand() % 2) ? toupper(c) : tolower(c); //случайный регистр
+        if (isalpha(c)) c = (rand() % 2) ? toupper(c) : tolower(c); //случайный регистр (не люблю тернарные операторы)
 
         mod[j++] = c;
     }
-    mod[j] = '\0';
+    mod[j] = '\0'; //строка обязана заканчивася 0! это фишка си
 
     snprintf(buf, size, "%s_%d", mod, rand() % 1000); //добавляем число от 0 до 999 после
 }
@@ -133,8 +134,8 @@ void gennick(char *buf, int size) { //генерация ников
 
 //ищем ник по айпи, не знаем тогда сам айпи
 char* findnick(char *ip) {for (int i = 0; i < usercount; i++) {if (strcmp(users[i].ip, ip) == 0) return users[i].nick;} 
-return ip;
-}
+return ip; //ник не нашли тогда вернем айпи как строку
+} //фуекция вернет указатель на сторку и пример айпи, потом проход по всем известным пользователям 
 
 
 
@@ -154,20 +155,20 @@ char* colornick(char *nick) {
 
 void saveuser(char *ip, char *nick) { //запоминание айпи+ника
     pthread_mutex_lock(&users_mutex); //мьютекс защищает глобальный массив чтоыб из разных потоков не видели
-
-    for (int i = 0; i < usercount; i++) { //проверяем есть ли и обновляем
+//кароче мы захватываем мьютекст чтобы другой поток не изменил массив одноверенно
+    for (int i = 0; i < usercount; i++) { //проверяем есть ли и обновляем(ищем такого же по нику)
         if (strcmp(users[i].nick, nick) == 0) {
-            strcpy(users[i].ip, ip);
+            strcpy(users[i].ip, ip);  //обнова для айпи и ника (с ограничением так круче и безопаснее)
             strncpy(users[i].nick, nick, MAXnick - 1);
-            users[i].last_seen = time(NULL); 
-            users[i].online = 1; 
-            pthread_mutex_unlock(&users_mutex);
+            users[i].last_seen = time(NULL);  //время обновили
+            users[i].online = 1; //поставили что онлайн
+            pthread_mutex_unlock(&users_mutex); //свобода мьюексу 
             return;
         }
     }
 
 
-    if (usercount < MAXusers) //если нет то добавляем
+    if (usercount < MAXusers) //если нет то добавляем (это если место не нашли то надо бы добавить)
     { 
         strncpy(users[usercount].ip, ip, 15);
 
@@ -178,31 +179,32 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
 
         printf("\n%s[%s]%s %s%s%s %s\n",BOLD, "НОВЫЙ",RESET, colornick(nick),nick, RESET, ip);
     }
-    pthread_mutex_unlock(&users_mutex);
+    pthread_mutex_unlock(&users_mutex); //сообщаем что есть новичок
 }
 
-void multicast_send(struct Message *msg) {
-    struct sockaddr_in group_addr;
+void multicast_send(struct Message *msg) { //это боль и отправка всем в группе
+    struct sockaddr_in group_addr;  //просто структура для адреса
     group_addr.sin_family = AF_INET;
-    group_addr.sin_port = htons(PORT);
+    group_addr.sin_port = htons(PORT); //преобразуем в стетевой порядок байт(кароче х.х.х.х в число)
     inet_pton(AF_INET, MULTICAST_GROUP, &group_addr.sin_addr);
-    sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr*)&group_addr, sizeof(group_addr));
+    sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr*)&group_addr, sizeof(group_addr)); 
+    //привели адрес к нужному типу и оправили по UDP 
 }
 
 
 
 
-void setup_multicast() {
-    int reuse = 1;
+void setup_multicast() { //тут настройка сокета для приема мультикаста
+    int reuse = 1; //разрешим переиспользовать чтобы несколько программ слуышали один порт
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
     struct ip_mreq mreq;
-    memset(&mreq, 0, sizeof(mreq));
+    memset(&mreq, 0, sizeof(mreq)); //обновляем структуру, заполняем байты нулями
     inet_pton(AF_INET, MULTICAST_GROUP, &mreq.imr_multiaddr);
-    mreq.imr_interface.s_addr = INADDR_ANY;
-    setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+    mreq.imr_interface.s_addr = INADDR_ANY; //любой интерфецс
+    setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)); //подписываем на мультикаст группу
 
-    struct sockaddr_in addr;
+    struct sockaddr_in addr; //привязываем сокет к порту на всех интерфейсах 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT);
@@ -212,23 +214,23 @@ void setup_multicast() {
 
 
 
-    int ttl = 2;
+    int ttl = 2; //это время жизни пакета (далеко не убежит) ну максимум два роутера
     setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
-
-    int loop = 1;
+// мне надо для тестирования 1 чтобы самой себе отправлять
+    int loop = 1; 
     setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
 }
 
-void* send_messages(void* arg) //(это значит ф-я используется в потоке)
+void* send_messages(void* arg) //(это значит ф-я используется в потоке) универсальный указатель....
 {
-    int sock = *(int*)arg;//arg->указатель->int (номер сокета)
-    char input[512]; //теперь input[512] вся строка //msg[256]; //тут просто храним текст
-    char ip[50]; //а тут просто ip-адрес
+    int sock = *(int*)arg;//arg->указатель->int (номер сокета) превращаем void* в int* и берём значение
+    char input[512]; //теперь input[512] вся строка //msg[256]; //тут просто храним текст (для ввода с клавы)
+    char target_nick[MAXnick];
     char text[MAXtext]; //отдельно текст
     struct sockaddr_in dest; //вот это уже структура адреса получателя
 
     dest.sin_family = AF_INET; //также IPv4
-    dest.sin_port = htons(PORT); //ставим порт
+    dest.sin_port = htons(PORT); //ставим порт 8882
 
 
 
@@ -236,12 +238,13 @@ void* send_messages(void* arg) //(это значит ф-я использует
 
     while (1) 
     {
-        printf("%s[%s%s%s%s]%s ",BOLD, colornick(mynick),mynick, RESET, BOLD, RESET);
+        printf("%s[%s%s%s%s]%s ",BOLD, colornick(mynick),mynick, RESET, BOLD, RESET); //вот оно пошло пошло
 
-        fflush(stdout);
-        if (!fgets(input, sizeof(input), stdin)) continue;
+        fflush(stdout); //принудительно выводим!
+        if (!fgets(input, sizeof(input), stdin)) continue; //читаем строку, если ошибка !fgets пропускаем
+
         
-        input[strcspn(input, "\n")] = 0;
+        input[strcspn(input, "\n")] = 0; //strcspn ищет позицию \n и заменяет на 0
         
         if (strcmp(input, "list") == 0) 
         {
@@ -249,26 +252,27 @@ void* send_messages(void* arg) //(это значит ф-я использует
 
             printf("\nпользователи в сети: \n");
 
-            for (int i = 0; i < usercount; i++) {
-                if (users[i].online) {printf("  %s%s%s \n", colornick(users[i].nick),users[i].nick,RESET);
+            for (int i = 0; i < usercount; i++) { //выводим список
+                if (users[i].online) {printf("  %s%s%s (%s)\n", colornick(users[i].nick),users[i].nick,RESET, users[i].ip);
                 }}
-            pthread_mutex_unlock(&users_mutex);
-            continue;
+            pthread_mutex_unlock(&users_mutex); //перебираем пользователей
+            continue; //мьютекс совободили и гоу дальше
         }
         
-        char *space = strchr(input, ' ');
+        char *space = strchr(input, ' '); //ну элементарно ищем пробел
         if (!space) {printf("формат: ник сообщение\n"); continue;}
         
 
 
-        *space = 0;
-        strcpy(ip, input);
+        *space = 0; //0 вместо проблела нам же надо разделить строку
+        strcpy(target_nick, input);
         strcpy(text, space + 1);
         
         pthread_mutex_lock(&users_mutex);
-        char target_ip[16] = {0};
-        for (int i = 0; i < usercount; i++) {
-            if (strcmp(users[i].nick, ip) == 0) {
+        char target_ip[16] = {0}; //ищем айпишник получателя
+
+        for (int i = 0; i < usercount; i++) { //перебор по никам
+            if (strcmp(users[i].nick, target_nick) == 0) {
                 strcpy(target_ip, users[i].ip);
                 break;
             }
@@ -276,19 +280,26 @@ void* send_messages(void* arg) //(это значит ф-я использует
         pthread_mutex_unlock(&users_mutex);
         
         if (target_ip[0] == 0) {
-            printf("пользователь %s не найден\n", ip);
+            printf("пользователь %s не найден\n", target_nick);
             continue;
         }
         
-        struct Message msg;
+        struct Message msg;//обнуляем структуру а то паямть будет замусорена
         memset(&msg, 0, sizeof(msg));
-        msg.type = MessageType_PrivateMessage;
+
+        msg.type = MessageType_PrivateMessage; //заполняем сообщение
         strcpy(msg.privmsg.from, mynick);
-        strcpy(msg.privmsg.to, ip);
+        strcpy(msg.privmsg.to, target_nick);
         strcpy(msg.privmsg.text, text);
         
+        memset(&dest, 0, sizeof(dest));//готовим адрес получателя
+        dest.sin_family = AF_INET;
+        dest.sin_port = htons(PORT);
         inet_pton(AF_INET, target_ip, &dest.sin_addr);
-        sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&dest, sizeof(dest));
+        
+        printf("[уходит] %s -> %s (%s): %s\n", mynick, target_nick, target_ip, text); //это мои логи потом уберем когда заработает
+        
+        sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&dest, sizeof(dest)); //отправляет личное сообщение напрямую 
         
     }
 
@@ -305,12 +316,12 @@ int main()
     srand(time(NULL) ^ getpid()); //генератор случайных чисел запускаяем
     gennick(mynick, sizeof(mynick)); //генерируем себе ник
     
-    sock = socket(AF_INET, SOCK_DGRAM, 0); //IPv4, UDP, по умолчанию
-    setup_multicast();
+    sock = socket(AF_INET, SOCK_DGRAM, 0); //IPv4, UDP, по умолчанию кароче UDP сокет
+    setup_multicast(); //настраиваем мультикаст:(
 //тут лажа?
     struct timeval tv; //мб сработает я не знаю уже
     tv.tv_sec = 0;
-    tv.tv_usec = 500000;
+    tv.tv_usec = 500000; //не боимся это 0,5 секунды чтобы recvfrom не ждал вечно
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     
     system("clear");
@@ -324,13 +335,15 @@ int main()
     printf("мультикаст группа: %s:%d\n", MULTICAST_GROUP, PORT);
     printf("list - покажет пользователей в сети\n");
     
-    pthread_t send_thread;
+    pthread_t send_thread; //запусккаем поток для отправки
     pthread_create(&send_thread, NULL, send_messages, &sock);
     
     struct Message msg;
     struct sockaddr_in from;
     socklen_t len = sizeof(from);
-    time_t last_hello = 0;
+    time_t last_hello = 0;//переменные для приема
+
+// сразу хеллоу при запуске
     
     struct Message hello_msg;
     memset(&hello_msg, 0, sizeof(hello_msg));
@@ -342,7 +355,7 @@ int main()
 
     while (1) 
     {
-        if (time(NULL) - last_hello >= OBNARUZ_INT) {
+        if (time(NULL) - last_hello >= OBNARUZ_INT) { //если прошло 5 секунд отпарляем хеллоу
 
         struct Message hello_msg;
         memset(&hello_msg, 0, sizeof(hello_msg));
@@ -357,7 +370,7 @@ int main()
         time_t now = time(NULL);
 
             for (int i = 0; i < usercount; i++) {
-                if (users[i].online && (now - users[i].last_seen) > 30) 
+                if (users[i].online && (now - users[i].last_seen) > 30) //если 30 секунд молчит то офлайн
 
                 {users[i].online = 0;
                     // printf("\n%s%s%s (%s) вышел\n",colornick(users[i].nick),users[i].nick, RESET, users[i].ip);
@@ -369,13 +382,13 @@ int main()
         }
         
         memset(&msg, 0, sizeof(msg));
-        int n = recvfrom(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&from, &len);
+        int n = recvfrom(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&from, &len); //ждем 0,5 сек
         
-        if (n > 0) {
+        if (n > 0) { //если что-то получили
         char ip_str[16];
-        strcpy(ip_str, inet_ntoa(from.sin_addr));
+        strcpy(ip_str, inet_ntoa(from.sin_addr)); //то айпи превращаем в строку
         
-        if (msg.type == MessageType_Hello) 
+        if (msg.type == MessageType_Hello) //если хелоу пришел отвечаем на него
         { 
             struct Message response; memset(&response, 0, sizeof(response)); response.type = MessageType_HelloResponse;
             strcpy(response.hello.nickname, mynick); 
@@ -386,13 +399,13 @@ int main()
             //     colornick(msg.hello.nickname), msg.hello.nickname,RESET, ip_str);
         }
 
+//публичное пока не продумано
 
-
-        else if (msg.type == MessageType_HelloResponse) {saveuser(ip_str, msg.hello.nickname);}
+        else if (msg.type == MessageType_HelloResponse) {saveuser(ip_str, msg.hello.nickname);} //сохраняем пользователя
         else if (msg.type == MessageType_Message) 
         {
 
-        saveuser(ip_str, msg.message.nickname);
+        saveuser(ip_str, msg.message.nickname); 
         printf("\n%s%s%s%s: %s%s\n", 
             colornick(msg.message.nickname),
             msg.message.nickname, 
@@ -400,18 +413,15 @@ int main()
         }
 
         else if (msg.type == MessageType_PrivateMessage) {
-            if (strcmp(msg.privmsg.to, mynick) == 0) 
-            {
-                saveuser(ip_str, msg.privmsg.from);
-
-                printf("\n%s[личное] %s%s%s%s: %s%s\n", BOLD,
-                    colornick(msg.privmsg.from), 
-                    msg.privmsg.from, RESET,BOLD, msg.privmsg.text, RESET);
-            }
+        printf("[пришло] от=%s для=%s: %s\n", msg.privmsg.from, msg.privmsg.to, msg.privmsg.text);
+            
+        if (strcmp(msg.privmsg.to, mynick) == 0)  //если наше сообщение ТО ПОКАЗАТЬ УЖЕ
+        {
+            saveuser(ip_str, msg.privmsg.from);
+            printf("\n%s[личное] %s%s%s: %s%s\n", BOLD, colornick(msg.privmsg.from), msg.privmsg.from, RESET, msg.privmsg.text, RESET);
+            fflush(stdout);
         }
-        // printf("[бяка] ");
-        // printf("%s[%s%s%s%s]%s ", BOLD,colornick(mynick), mynick, RESET,BOLD,RESET);
-        fflush(stdout);
         }
     }
+}
 }
