@@ -289,6 +289,7 @@ void* send_messages(void* arg) //(это значит ф-я использует
         
         inet_pton(AF_INET, target_ip, &dest.sin_addr);
         sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&dest, sizeof(dest));
+        
     }
 
 
