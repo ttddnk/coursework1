@@ -297,7 +297,7 @@ void* send_messages(void* arg) //(это значит ф-я использует
         dest.sin_port = htons(PORT);
         inet_pton(AF_INET, target_ip, &dest.sin_addr);
         
-        printf("[уходит] %s -> %s (%s): %s\n", mynick, target_nick, target_ip, text); //это мои логи потом уберем когда заработает
+        // printf("[уходит] %s -> %s (%s): %s\n", mynick, target_nick, target_ip, text); //это мои логи потом уберем когда заработает
         
         sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&dest, sizeof(dest)); //отправляет личное сообщение напрямую 
         
@@ -413,7 +413,7 @@ int main()
         }
 
         else if (msg.type == MessageType_PrivateMessage) {
-        printf("[пришло] от=%s для=%s: %s\n", msg.privmsg.from, msg.privmsg.to, msg.privmsg.text);
+        // printf("[пришло] от=%s для=%s: %s\n", msg.privmsg.from, msg.privmsg.to, msg.privmsg.text);
             
         if (strcmp(msg.privmsg.to, mynick) == 0)  //если наше сообщение ТО ПОКАЗАТЬ УЖЕ
         {
