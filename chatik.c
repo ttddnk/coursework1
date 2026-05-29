@@ -177,7 +177,7 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
         users[usercount].online = 1;
         usercount++;
 
-        printf("\n%s[%s]%s %s%s%s %s\n",BOLD, "НОВЫЙ",RESET, colornick(nick),nick, RESET, ip);
+        printf("\n%s%s %s%s%s %s\n",BOLD, "НОВЫЙ",RESET, colornick(nick),nick, RESET);
     }
     pthread_mutex_unlock(&users_mutex); //сообщаем что есть новичок
 }
