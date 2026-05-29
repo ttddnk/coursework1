@@ -253,7 +253,7 @@ void* send_messages(void* arg) //(это значит ф-я использует
             printf("\nпользователи в сети: \n");
 
             for (int i = 0; i < usercount; i++) { //выводим список
-                if (users[i].online) {printf("  %s%s%s (%s)\n", colornick(users[i].nick),users[i].nick,RESET, users[i].ip);
+                if (users[i].online) {printf("  %s%s%s \n", colornick(users[i].nick),users[i].nick,RESET);
                 }}
             pthread_mutex_unlock(&users_mutex); //перебираем пользователей
             continue; //мьютекс совободили и гоу дальше
