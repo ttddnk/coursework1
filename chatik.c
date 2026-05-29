@@ -373,7 +373,7 @@ int main()
                 if (users[i].online && (now - users[i].last_seen) > 30) //если 30 секунд молчит то офлайн
 
                 {users[i].online = 0;
-                    // printf("\n%s%s%s (%s) вышел\n",colornick(users[i].nick),users[i].nick, RESET, users[i].ip);
+                    printf("\n%s%s%s вышел\n",colornick(users[i].nick),users[i].nick, RESET);
                     }
             }
 
