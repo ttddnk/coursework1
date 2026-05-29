@@ -42,6 +42,11 @@ typedef struct _MessageContent { //структура сообщ
     char text[MAXtext]; //текст
 } MessageContent;
 
+
+
+
+
+
 typedef struct _HelloContent {
     char nickname[MAXnick];
 } HelloContent;
@@ -60,6 +65,9 @@ struct Message { //типо полиморфизм и наследование �
         PrivateMessageContent privmsg;
     };
 };
+
+
+
 
 struct User { //хранение другого товарища
     char ip[16]; //айпи
@@ -90,6 +98,11 @@ const char *nouns[] = {
     "Quake","Raven","Snake","Thorn","Viper","Wolf","Xen","Zeal",NULL
 };
 
+
+
+
+
+
 char leet(char c) {
     switch (c) {
         case 'A': case 'a': return '4'; //A в 4
@@ -109,6 +122,8 @@ void gennick(char *buf, int size) { //генерация ников
     char base[100]; //склеиваем прид и сущ
     snprintf(base, sizeof(base), "%s%s", adjs[rand() % ac], nouns[rand() % nc]);
 
+
+
     char mod[100]; //замена разная
     int j = 0;
     for (int i = 0; base[i] && j < 99; i++) {
@@ -122,19 +137,21 @@ void gennick(char *buf, int size) { //генерация ников
     snprintf(buf, size, "%s_%d", mod, rand() % 1000); //добавляем число от 0 до 999 после
 }
 
+
+
+
+
 char* findnick(char *ip) { //ищем ник по айпи, не знаем - сам айпи
-    for (int i = 0; i < usercount; i++) {
-        if (strcmp(users[i].ip, ip) == 0)
-            return users[i].nick;
-    }
+    for (int i = 0; i < usercount; i++) {if (strcmp(users[i].ip, ip) == 0) return users[i].nick; }
     return ip;
 }
 
+
+
 char* get_color_for_nick(char *nick) {
     int sum = 0;
-    for (int i = 0; nick[i]; i++) {
-        sum += nick[i];
-    }
+    for (int i = 0; nick[i]; i++) {sum += nick[i];}
+
     switch (sum % 6) {
         case 0: return RED;
         case 1: return GREEN;
@@ -157,16 +174,19 @@ void saveuser(char *ip, char *nick) { //запоминание айпи+ника
         }
     }
 
+
+
+
     if (usercount < MAXusers) { //если нет то добавляем
         strncpy(users[usercount].ip, ip, 15);
         strncpy(users[usercount].nick, nick, MAXnick - 1);
         users[usercount].last_seen = time(NULL);
         users[usercount].online = 1;
         usercount++;
-        // printf("\n%s[%s]%s %s%s%s (%s)%s\n", 
-        //        BOLD, "НОВЫЙ", RESET,
-        //        get_color_for_nick(nick), nick, RESET, 
-        //        ip, RESET);
+        printf("\n%s[%s]%s %s%s%s %s\n", 
+            BOLD, "НОВЫЙ", RESET,
+            get_color_for_nick(nick), nick, RESET, 
+            ip);
     }
     pthread_mutex_unlock(&users_mutex);
 }
@@ -178,6 +198,9 @@ void multicast_send(struct Message *msg) {
     inet_pton(AF_INET, MULTICAST_GROUP, &group_addr.sin_addr);
     sendto(sock, msg, sizeof(*msg), 0, (struct sockaddr*)&group_addr, sizeof(group_addr));
 }
+
+
+
 
 void setup_multicast() {
     int reuse = 1;
@@ -214,18 +237,20 @@ void* send_messages(void* arg) //(это значит ф-я использует
 
     dest.sin_family = AF_INET; //также IPv4
     dest.sin_port = htons(PORT); //ставим порт
-    
 
+
+
+    
 
     while (1) 
     {
         printf("%s[%s%s%s%s]%s ", 
-               BOLD,
-               get_color_for_nick(mynick),
-               mynick, 
-               RESET,
-               BOLD,
-               RESET);
+            BOLD,
+            get_color_for_nick(mynick),
+            mynick, 
+            RESET,
+            BOLD,
+            RESET);
         fflush(stdout);
         if (!fgets(input, sizeof(input), stdin)) continue;
         
@@ -246,11 +271,10 @@ void* send_messages(void* arg) //(это значит ф-я использует
         }
         
         char *space = strchr(input, ' ');
-        if (!space) {
-            printf("формат: ник сообщение\n");
-            continue;
-        }
+        if (!space) {printf("формат: ник сообщение\n"); continue;}
         
+
+
         *space = 0;
         strcpy(ip, input);
         strcpy(text, space + 1);
@@ -264,8 +288,14 @@ void* send_messages(void* arg) //(это значит ф-я использует
         inet_pton(AF_INET, ip, &dest.sin_addr);
         sendto(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&dest, sizeof(dest));
     }
+
+
     return NULL;
 }
+
+
+
+
 
 int main() 
 {
@@ -278,6 +308,8 @@ int main()
     system("clear");
     system("figlet -f slant 'Chatik'");
     system("echo ''");
+
+
 
     printf("ваш ник: %s%s%s\n", get_color_for_nick(mynick), mynick, RESET);
     printf("порт: %d\n", PORT);
@@ -292,6 +324,9 @@ int main()
     socklen_t len = sizeof(from);
     time_t last_hello = 0;
     
+
+
+
     while (1) 
     {
         if (time(NULL) - last_hello >= DISCOVERY_INTERVAL) {
@@ -319,6 +354,7 @@ int main()
         memset(&msg, 0, sizeof(msg));
         recvfrom(sock, &msg, sizeof(msg), 0, (struct sockaddr*)&from, &len);
         
+
         char ip_str[16];
         strcpy(ip_str, inet_ntoa(from.sin_addr));
         
@@ -335,9 +371,10 @@ int main()
             //        RESET, 
             //        ip_str);
         }
-        else if (msg.type == MessageType_HelloResponse) {
-            saveuser(ip_str, msg.hello.nickname);
-        }
+
+
+
+        else if (msg.type == MessageType_HelloResponse) {saveuser(ip_str, msg.hello.nickname);}
         else if (msg.type == MessageType_Message) {
             saveuser(ip_str, msg.message.nickname);
             printf("\n%s%s%s%s: %s%s\n", 
